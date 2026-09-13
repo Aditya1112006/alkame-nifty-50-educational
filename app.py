@@ -160,8 +160,14 @@ def render_dashboard() -> None:
         st.success("Live-worthiness refreshed.")
 
     scheduler.resolve_pending_outcomes(symbol, stock_df)
+    event_context = scheduler.get_event_context(symbol)
     cycle_res = scheduler.run_one_cycle_for_symbol(
-        symbol, stock_df, index_df, macro_events=[], corporate_events=[], news_articles=[]
+        symbol,
+        stock_df,
+        index_df,
+        macro_events=event_context.macro_events,
+        corporate_events=event_context.corporate_events,
+        news_articles=event_context.news_articles,
     )
     signal = getattr(cycle_res, "signal", cycle_res)
 

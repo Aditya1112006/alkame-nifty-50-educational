@@ -50,6 +50,11 @@ class CorporateEventsFetcher:
         ensure_directories()
         self.download_folder = download_folder
         self._nse: NSE | None = None
+        self._last_call_ok: bool | None = None
+        self._last_call_error: str | None = None
+        self._last_fetch_status: str = "EVENT_SOURCE_UNAVAILABLE"
+        self._last_fetch_errors: list[str] = []
+        self._last_fetch_at: datetime | None = None
 
     def __enter__(self):
         self._nse = NSE(download_folder=self.download_folder, server=False)
@@ -78,10 +83,14 @@ class CorporateEventsFetcher:
             try:
                 time.sleep(NSE_RATE_LIMIT_DELAY_SECONDS)
                 result = fn(*args, **kwargs)
+                self._last_call_ok = True
+                self._last_call_error = None
                 health_registry.report("corporate_events_fetcher", ok=True, detail=f"Fetched {fn_name}")
                 return result
             except Exception as e:
                 last_error = e
+                self._last_call_ok = False
+                self._last_call_error = str(e)
                 logger.error(f"Attempt {attempt}/{MAX_RETRIES} failed calling {fn_name}: {e}")
                 if attempt < MAX_RETRIES:
                     time.sleep(RETRY_BACKOFF_SECONDS * attempt)
@@ -170,9 +179,40 @@ class CorporateEventsFetcher:
     def fetch_all_for_symbol(self, symbol: str) -> list[dict]:
         """Fetch every corporate-event category for one symbol, combined into one list."""
         events: list[dict] = []
-        events.extend(self.fetch_announcements(symbol))
-        events.extend(self.fetch_board_meetings(symbol))
-        events.extend(self.fetch_corporate_actions(symbol))
+        call_results: list[bool] = []
+        self._last_fetch_errors = []
+
+        for fetch_name, fetch_fn in (
+            ("announcements", self.fetch_announcements),
+            ("board meetings", self.fetch_board_meetings),
+            ("corporate actions", self.fetch_corporate_actions),
+        ):
+            try:
+                part = fetch_fn(symbol)
+                events.extend(part)
+                call_ok = self._last_call_ok is not False
+            except Exception as e:
+                logger.error(f"Failed fetching {fetch_name} for {symbol}: {e}")
+                call_ok = False
+                self._last_call_ok = False
+                self._last_call_error = str(e)
+
+            call_results.append(call_ok)
+            if not call_ok:
+                self._last_fetch_errors.append(
+                    f"Corporate {fetch_name} source unavailable: {self._last_call_error or 'unknown error'}"
+                )
+
+        if all(not ok for ok in call_results):
+            self._last_fetch_status = "EVENT_SOURCE_UNAVAILABLE"
+        elif not all(call_results):
+            self._last_fetch_status = "EVENT_SOURCE_PARTIAL"
+        elif events:
+            self._last_fetch_status = "EVENTS_AVAILABLE"
+        else:
+            self._last_fetch_status = "NO_EVENTS"
+
+        self._last_fetch_at = datetime.now()
         return events
 
     def fetch_all_nifty50(self) -> dict[str, list[dict]]:

@@ -2,7 +2,7 @@
 import logging
 import time as time_module
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Optional, cast
 from zoneinfo import ZoneInfo
 
@@ -15,11 +15,15 @@ from backtester import Backtester
 from config import (
     BAR_INTERVAL,
     MARKET_TIMEZONE,
+    NSE_ANNOUNCEMENT_REFRESH_MINUTES,
     PREDICTION_DEADBAND_PCT,
     SCHEDULER_INTERVAL_MINUTES,
     configure_logging,
 )
 from data_fetcher import DataFetcher
+from corporate_events_fetcher import CorporateEventsFetcher
+from macro_calendar import MacroCalendar
+from news_sentiment_fetcher import NewsSentimentFetcher
 from event_classifier import EventClassifier
 from history_manager import HistoryManager
 from predictor import MultiHorizonSignal, PredictionSignal, Predictor
@@ -46,6 +50,7 @@ def _interval_to_minutes(interval: str) -> int:
 
 
 BAR_INTERVAL_MINUTES = _interval_to_minutes(BAR_INTERVAL)
+EVENT_CONTEXT_REFRESH_MINUTES = max(1, int(NSE_ANNOUNCEMENT_REFRESH_MINUTES))
 
 
 @dataclass
@@ -54,6 +59,20 @@ class LiveWorthinessSnapshot:
     calibration_result: CalibrationResult
     refreshed_at: datetime
 
+@dataclass
+class EventContext:
+    macro_events: list | None
+    corporate_events: list[dict] | None
+    news_articles: list[dict] | None
+
+    macro_status: str
+    corporate_status: str
+    news_status: str
+
+    status: str
+    as_of: datetime
+    refreshed_at: datetime
+    errors: list[str]
 
 @dataclass
 class CycleResult:
@@ -84,13 +103,26 @@ class Scheduler:
         event_classifier: EventClassifier | None = None,
         history_manager: HistoryManager | None = None,
         backtester: Backtester | None = None,
+        corporate_events_fetcher: CorporateEventsFetcher | None = None,
+        macro_calendar: MacroCalendar | None = None,
+        news_sentiment_fetcher: NewsSentimentFetcher | None = None,
     ):
         self.data_fetcher = data_fetcher or DataFetcher()
         self.predictor = predictor or Predictor(data_fetcher=self.data_fetcher)
         self.event_classifier = event_classifier or EventClassifier()
         self.history_manager = history_manager or HistoryManager()
         self.backtester = backtester or Backtester()
+
+        self.corporate_events_fetcher = (
+            corporate_events_fetcher or CorporateEventsFetcher()
+        )
+        self.macro_calendar = macro_calendar or MacroCalendar()
+        self.news_sentiment_fetcher = (
+            news_sentiment_fetcher or NewsSentimentFetcher()
+        )
+
         self._live_worthiness_cache: dict[tuple[str, str], LiveWorthinessSnapshot] = {}
+        self._event_context_cache: dict[str, EventContext] = {}
 
     # -----------------------------------------------------------------
     # Market hours
@@ -162,6 +194,189 @@ class Scheduler:
         return self._live_worthiness_cache.get((symbol, horizon))
 
     # -----------------------------------------------------------------
+    # Event context collection / filtering
+    # -----------------------------------------------------------------
+    @staticmethod
+    def _coerce_event_datetime(value: object) -> datetime | None:
+        if isinstance(value, pd.Timestamp):
+            return value.to_pydatetime()
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                return None
+        return None
+
+    @staticmethod
+    def _as_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=ZoneInfo(MARKET_TIMEZONE))
+        return value.astimezone(timezone.utc)
+
+    @classmethod
+    def _filter_events_as_of(cls, context: EventContext, as_of: datetime) -> EventContext:
+        as_of_utc = cls._as_utc(as_of)
+
+        corporate_events: list[dict] | None = None
+        if context.corporate_events is not None:
+            corporate_events = []
+            for event in context.corporate_events:
+                raw = event.get("raw") or {}
+                available_at = (
+                    event.get("available_at")
+                    or event.get("fetched_at")
+                    or raw.get("available_at")
+                    or raw.get("fetched_at")
+                    or raw.get("published_at")
+                )
+                event_time = cls._coerce_event_datetime(available_at)
+                if event_time is not None and cls._as_utc(event_time) <= as_of_utc:
+                    corporate_events.append(event)
+
+        news_articles: list[dict] | None = None
+        if context.news_articles is not None:
+            news_articles = []
+            for article in context.news_articles:
+                available_at = (
+                    article.get("available_at")
+                    or article.get("published_at")
+                    or article.get("fetched_at")
+                )
+                event_time = cls._coerce_event_datetime(available_at)
+                if event_time is not None and cls._as_utc(event_time) <= as_of_utc:
+                    news_articles.append(article)
+
+        macro_events = context.macro_events
+
+        statuses = [context.macro_status, context.corporate_status, context.news_status]
+        filtered_statuses = [
+            "NO_EVENTS" if status == "EVENTS_AVAILABLE" and not events else status
+            for status, events in zip(
+                statuses,
+                [macro_events, corporate_events, news_articles],
+            )
+        ]
+
+        unavailable = sum(status == "EVENT_SOURCE_UNAVAILABLE" for status in filtered_statuses)
+        if unavailable == 3:
+            overall_status = "EVENT_SOURCE_UNAVAILABLE"
+        elif unavailable > 0 or "EVENT_SOURCE_PARTIAL" in filtered_statuses:
+            overall_status = "EVENT_SOURCE_PARTIAL"
+        elif any(status == "EVENTS_AVAILABLE" for status in filtered_statuses):
+            overall_status = "EVENTS_AVAILABLE"
+        else:
+            overall_status = "NO_EVENTS"
+
+        return EventContext(
+            macro_events=macro_events,
+            corporate_events=corporate_events,
+            news_articles=news_articles,
+            macro_status=filtered_statuses[0],
+            corporate_status=filtered_statuses[1],
+            news_status=filtered_statuses[2],
+            status=overall_status,
+            as_of=as_of,
+            refreshed_at=context.refreshed_at,
+            errors=list(context.errors),
+        )
+
+    def get_event_context(
+        self,
+        symbol: str,
+        as_of: datetime | None = None,
+        force_refresh: bool = False,
+    ) -> EventContext:
+        """Collect event inputs once and expose explicit source availability state.
+
+        ``[]`` means a source was successfully checked and had no eligible events;
+        ``None`` means that source was unavailable.  Source timestamps are applied
+        before the context is handed to Predictor so future events cannot leak into
+        a signal generated at an earlier as-of time.
+        """
+        query_time = as_of or datetime.now()
+        cached = self._event_context_cache.get(symbol)
+        cache_fresh = (
+            cached is not None
+            and as_of is None
+            and not force_refresh
+            and datetime.now() - cached.refreshed_at
+            < timedelta(minutes=EVENT_CONTEXT_REFRESH_MINUTES)
+        )
+        if cache_fresh:
+            return self._filter_events_as_of(cached, query_time)
+
+        errors: list[str] = []
+
+        try:
+            macro_events = self.macro_calendar.get_active_macro_events(query_time.date())
+            macro_ok = getattr(self.macro_calendar, "_last_query_ok", True)
+            if macro_ok is False:
+                macro_events = None
+                errors.append("Macro event source unavailable")
+                macro_status = "EVENT_SOURCE_UNAVAILABLE"
+            else:
+                macro_status = "EVENTS_AVAILABLE" if macro_events else "NO_EVENTS"
+        except Exception as e:
+            macro_events = None
+            macro_status = "EVENT_SOURCE_UNAVAILABLE"
+            errors.append(f"Macro event source unavailable: {e}")
+
+        try:
+            corporate_events = self.corporate_events_fetcher.fetch_all_for_symbol(symbol)
+            corporate_status = getattr(self.corporate_events_fetcher, "_last_fetch_status", None)
+            if corporate_status is None:
+                corporate_status = "EVENTS_AVAILABLE" if corporate_events else "NO_EVENTS"
+            if corporate_status == "EVENT_SOURCE_UNAVAILABLE":
+                corporate_events = None
+            errors.extend(getattr(self.corporate_events_fetcher, "_last_fetch_errors", []))
+        except Exception as e:
+            corporate_events = None
+            corporate_status = "EVENT_SOURCE_UNAVAILABLE"
+            errors.append(f"Corporate event source unavailable: {e}")
+
+        try:
+            news_articles = self.news_sentiment_fetcher.get_news_for_symbol(symbol)
+            news_status = getattr(self.news_sentiment_fetcher, "_last_fetch_status", None)
+            if news_status is None:
+                news_status = "EVENTS_AVAILABLE" if news_articles else "NO_EVENTS"
+            if news_status in {"EVENT_SOURCE_UNAVAILABLE", "EVENT_SOURCE_PARTIAL"}:
+                news_articles = None
+            errors.extend(getattr(self.news_sentiment_fetcher, "_last_fetch_errors", []))
+        except Exception as e:
+            news_articles = None
+            news_status = "EVENT_SOURCE_UNAVAILABLE"
+            errors.append(f"News source unavailable: {e}")
+
+        source_statuses = [macro_status, corporate_status, news_status]
+        unavailable = sum(status == "EVENT_SOURCE_UNAVAILABLE" for status in source_statuses)
+        if unavailable == 3:
+            overall_status = "EVENT_SOURCE_UNAVAILABLE"
+        elif unavailable > 0 or "EVENT_SOURCE_PARTIAL" in source_statuses:
+            overall_status = "EVENT_SOURCE_PARTIAL"
+        elif any(status == "EVENTS_AVAILABLE" for status in source_statuses):
+            overall_status = "EVENTS_AVAILABLE"
+        else:
+            overall_status = "NO_EVENTS"
+
+        effective_as_of = as_of or datetime.now()
+        context = EventContext(
+            macro_events=macro_events,
+            corporate_events=corporate_events,
+            news_articles=news_articles,
+            macro_status=macro_status,
+            corporate_status=corporate_status,
+            news_status=news_status,
+            status=overall_status,
+            as_of=effective_as_of,
+            refreshed_at=datetime.now(),
+            errors=errors,
+        )
+        self._event_context_cache[symbol] = context
+        return self._filter_events_as_of(context, effective_as_of)
+
+    # -----------------------------------------------------------------
     # One cycle for one symbol
     # -----------------------------------------------------------------
     def run_one_cycle_for_symbol(
@@ -187,6 +402,12 @@ class Scheduler:
             return None
 
         try:
+            if macro_events is None and corporate_events is None and news_articles is None:
+                event_context = self.get_event_context(symbol)
+                macro_events = event_context.macro_events
+                corporate_events = event_context.corporate_events
+                news_articles = event_context.news_articles
+
             from config import HORIZON_CONFIG
 
             horizons = list(HORIZON_CONFIG.keys())
@@ -236,6 +457,12 @@ class Scheduler:
         news_articles: list[dict] | None = None,
     ):
         try:
+            if macro_events is None and corporate_events is None and news_articles is None:
+                event_context = self.get_event_context(symbol)
+                macro_events = event_context.macro_events
+                corporate_events = event_context.corporate_events
+                news_articles = event_context.news_articles
+
             from config import HORIZON_CONFIG
 
             horizons = list(HORIZON_CONFIG.keys())
@@ -380,7 +607,15 @@ class Scheduler:
                 symbol_data = symbol_data_provider()
                 for symbol, (stock_df, index_df) in symbol_data.items():
                     self.resolve_pending_outcomes(symbol, stock_df)
-                    self.run_one_cycle_for_symbol(symbol, stock_df, index_df)
+                    event_context = self.get_event_context(symbol)
+                    self.run_one_cycle_for_symbol(
+                        symbol,
+                        stock_df,
+                        index_df,
+                        macro_events=event_context.macro_events,
+                        corporate_events=event_context.corporate_events,
+                        news_articles=event_context.news_articles,
+                    )
             except Exception as e:
                 logger.error(f"Error during scheduler cycle: {e}")
 

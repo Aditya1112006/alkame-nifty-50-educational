@@ -56,6 +56,13 @@ class NewsSentimentFetcher:
 
     def __init__(self):
         self._vader = SentimentIntensityAnalyzer()
+        self._last_marketaux_ok: bool | None = None
+        self._last_marketaux_error: str | None = None
+        self._last_google_rss_ok: bool | None = None
+        self._last_google_rss_error: str | None = None
+        self._last_fetch_status: str = "EVENT_SOURCE_UNAVAILABLE"
+        self._last_fetch_errors: list[str] = []
+        self._last_fetch_at: datetime | None = None
 
     @staticmethod
     def _sentiment_label(score: float) -> str:
@@ -82,6 +89,8 @@ class NewsSentimentFetcher:
     def _fetch_marketaux(self, symbol: str, company_name: str | None = None) -> list[dict]:
         """Fetch news + sentiment from marketaux for a given symbol."""
         if not MARKETAUX_API_KEY:
+            self._last_marketaux_ok = False
+            self._last_marketaux_error = "MARKETAUX_API_KEY not configured"
             logger.warning("MARKETAUX_API_KEY not set — skipping marketaux, will use RSS fallback.")
             return []
 
@@ -101,6 +110,8 @@ class NewsSentimentFetcher:
                 resp.raise_for_status()
                 payload = resp.json()
                 articles = payload.get("data", [])
+                self._last_marketaux_ok = True
+                self._last_marketaux_error = None
 
                 normalized = []
                 for a in articles:
@@ -148,6 +159,8 @@ class NewsSentimentFetcher:
                     time.sleep(RETRY_BACKOFF_SECONDS * attempt)
 
         logger.error(f"marketaux fetch failed for {symbol} after {MAX_RETRIES} attempts: {last_error}")
+        self._last_marketaux_ok = False
+        self._last_marketaux_error = str(last_error) if last_error else "unknown error"
         return []
 
     def _fetch_google_rss(self, symbol: str, company_name: str | None = None) -> list[dict]:
@@ -160,6 +173,12 @@ class NewsSentimentFetcher:
             feed = feedparser.parse(url)
             if getattr(feed, "bozo", False) and feed.entries == []:
                 logger.error(f"Google News RSS parse issue for {symbol}: {getattr(feed, 'bozo_exception', 'unknown')}")
+                self._last_google_rss_ok = False
+                self._last_google_rss_error = str(getattr(feed, "bozo_exception", "parse error"))
+                return []
+
+            self._last_google_rss_ok = True
+            self._last_google_rss_error = None
 
             normalized = []
             for entry in feed.entries[:NEWS_FETCH_LIMIT]:
@@ -192,6 +211,8 @@ class NewsSentimentFetcher:
 
         except Exception as e:
             logger.error(f"Failed fetching Google News RSS for {symbol}: {e}")
+            self._last_google_rss_ok = False
+            self._last_google_rss_error = str(e)
             return []
 
     def get_news_for_symbol(self, symbol: str, company_name: str | None = None) -> list[dict]:
@@ -199,19 +220,38 @@ class NewsSentimentFetcher:
         Get news for one symbol: try marketaux first, fall back to RSS if
         marketaux is unconfigured, errors, or returns zero articles.
         """
+        self._last_fetch_errors = []
         articles = self._fetch_marketaux(symbol, company_name)
         if articles:
+            self._last_fetch_status = "EVENTS_AVAILABLE"
+            self._last_fetch_at = datetime.now(UTC)
             health_registry.report("news_sentiment_fetcher", ok=True, detail="served via marketaux")
             return articles
 
         logger.info(f"marketaux returned no results for {symbol}, falling back to Google News RSS.")
         rss_articles = self._fetch_google_rss(symbol, company_name)
         if rss_articles:
+            self._last_fetch_status = "EVENTS_AVAILABLE"
             health_registry.report("news_sentiment_fetcher", ok=True, detail="served via google_news_rss fallback")
+        elif self._last_google_rss_ok:
+            self._last_fetch_status = "NO_EVENTS"
+            health_registry.report("news_sentiment_fetcher", ok=True, detail="checked both news providers; no events")
         else:
+            if self._last_marketaux_ok:
+                self._last_fetch_status = "EVENT_SOURCE_PARTIAL"
+            else:
+                self._last_fetch_status = "EVENT_SOURCE_UNAVAILABLE"
+            if self._last_marketaux_error:
+                self._last_fetch_errors.append(f"Marketaux unavailable: {self._last_marketaux_error}")
+            if self._last_google_rss_error:
+                self._last_fetch_errors.append(f"Google News RSS unavailable: {self._last_google_rss_error}")
             health_registry.report(
-                "news_sentiment_fetcher", ok=False, detail="both marketaux and google_news_rss failed"
+                "news_sentiment_fetcher",
+                ok=False,
+                detail=f"news source status: {self._last_fetch_status}",
+                error="; ".join(self._last_fetch_errors) or None,
             )
+        self._last_fetch_at = datetime.now(UTC)
         return rss_articles
 
     def get_news_for_all_nifty50(self) -> dict[str, list[dict]]:
