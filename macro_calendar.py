@@ -157,6 +157,10 @@ class MacroCalendar:
     def __init__(self, csv_path: Path = MACRO_CALENDAR_PATH):
         self.csv_path = csv_path
         self._events: list[MacroEvent] = []
+        self._load_ok: bool = True
+        self._read_ok: bool = True
+        self._last_query_ok: bool | None = None
+        self._last_query_error: str | None = None
         self._load_or_seed()
 
     def _load_or_seed(self) -> None:
@@ -166,10 +170,12 @@ class MacroCalendar:
                 logger.info(f"No macro calendar found at {self.csv_path}, seeding with defaults.")
                 self._write_rows(SEED_EVENTS)
             self._events = self._read_rows()
+            self._load_ok = self._read_ok
             logger.info(f"Loaded {len(self._events)} macro calendar event(s) from {self.csv_path}")
         except Exception as e:
             logger.error(f"Failed to load or seed macro calendar: {e}")
             self._events = []
+            self._load_ok = False
 
     def _write_rows(self, rows: list[dict]) -> None:
         f = None
@@ -189,6 +195,7 @@ class MacroCalendar:
     def _read_rows(self) -> list[MacroEvent]:
         events: list[MacroEvent] = []
         f = None
+        self._read_ok = True
         try:
             f = open(self.csv_path, newline="", encoding="utf-8")
             reader = csv.DictReader(f)
@@ -217,6 +224,7 @@ class MacroCalendar:
                     logger.error(f"Skipping malformed macro calendar row {row}: {row_err}")
         except Exception as e:
             logger.error(f"Failed reading macro calendar CSV at {self.csv_path}: {e}")
+            self._read_ok = False
         finally:
             if f is not None:
                 f.close()
@@ -226,6 +234,7 @@ class MacroCalendar:
         """Re-read the CSV from disk — call this if a trader edited it mid-session."""
         try:
             self._events = self._read_rows()
+            self._load_ok = self._read_ok
             logger.info(f"Reloaded macro calendar: {len(self._events)} event(s).")
         except Exception as e:
             logger.error(f"Failed to reload macro calendar: {e}")
@@ -244,9 +253,18 @@ class MacroCalendar:
         """Return all macro events whose impact window covers check_date (default: today)."""
         check_date = check_date or date.today()
         try:
-            return [e for e in self._events if e.affects_date(check_date)]
+            if not self._load_ok:
+                self._last_query_ok = False
+                self._last_query_error = "Macro calendar failed to load"
+                return []
+            result = [e for e in self._events if e.affects_date(check_date)]
+            self._last_query_ok = True
+            self._last_query_error = None
+            return result
         except Exception as e:
             logger.error(f"Failed computing active macro events for {check_date}: {e}")
+            self._last_query_ok = False
+            self._last_query_error = str(e)
             return []
 
     def get_all_events(self) -> list[MacroEvent]:

@@ -196,6 +196,15 @@ class EventClassifier:
             raw = corporate_event.get("raw", {})
             label = raw.get("subject") or raw.get("desc") or raw.get("purpose") or category
 
+            source_timestamp = raw.get("published_at") or raw.get("timestamp") or corporate_event.get("fetched_at")
+            if isinstance(source_timestamp, str):
+                try:
+                    source_timestamp = datetime.fromisoformat(source_timestamp.replace("Z", "+00:00"))
+                except ValueError:
+                    source_timestamp = None
+            if not isinstance(source_timestamp, datetime):
+                source_timestamp = datetime.now()
+
             affected = [symbol] if symbol else []
             scope = SCOPE_STOCK if symbol else SCOPE_MARKET  # market-wide block deals have no single symbol
 
@@ -203,7 +212,7 @@ class EventClassifier:
                 event_id=self._next_event_id("CORP"),
                 source="CORPORATE",
                 event_type=category,
-                timestamp=datetime.now(),
+                timestamp=source_timestamp,
                 scope=scope,
                 affected_tickers=affected,
                 sector=SECTOR_MAP.get(symbol) if symbol else None,

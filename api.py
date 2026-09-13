@@ -225,8 +225,14 @@ def get_signal(symbol: str):
         raise HTTPException(status_code=503, detail=f"Could not fetch data for {symbol}")
 
     scheduler.resolve_pending_outcomes(symbol, stock_df)
+    event_context = scheduler.get_event_context(symbol)
     cycle_res = scheduler.run_one_cycle_for_symbol(
-        symbol, stock_df, index_df, macro_events=[], corporate_events=[], news_articles=[]
+        symbol,
+        stock_df,
+        index_df,
+        macro_events=event_context.macro_events,
+        corporate_events=event_context.corporate_events,
+        news_articles=event_context.news_articles,
     )
     multi_signal = getattr(cycle_res, "signal", cycle_res)
     if multi_signal is None or not hasattr(multi_signal, "signals") or not multi_signal.signals:
@@ -294,10 +300,16 @@ def stream_signal(symbol: str):
         raise HTTPException(status_code=503, detail=f"Could not fetch data for {symbol}")
 
     scheduler.resolve_pending_outcomes(symbol, stock_df)
+    event_context = scheduler.get_event_context(symbol)
 
     def generate():
         stream = scheduler.run_cycle_stream_for_symbol(
-            symbol, stock_df, index_df, macro_events=[], corporate_events=[], news_articles=[]
+            symbol,
+            stock_df,
+            index_df,
+            macro_events=event_context.macro_events,
+            corporate_events=event_context.corporate_events,
+            news_articles=event_context.news_articles,
         )
         for sig in stream:
             if sig.action == "BUY":
