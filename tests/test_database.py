@@ -1,5 +1,5 @@
-import pytest
 from database import get_db
+
 
 def test_database():
     db_gen = get_db()

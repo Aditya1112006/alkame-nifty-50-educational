@@ -1,13 +1,12 @@
-import pytest
-import sqlite3
 import pandas as pd
-from unittest.mock import MagicMock, patch
+
 from history_manager import HistoryManager
 from predictor import PredictionSignal
 
+
 def test_history_manager():
     hm = HistoryManager(db_path=":memory:")
-    
+
     # Save a fake prediction
     sig = PredictionSignal(
         symbol="TCS",
@@ -25,27 +24,28 @@ def test_history_manager():
         upside_summary="up",
     )
     hm.save_prediction(sig)
-    
+
     # get_recent
     df = hm.get_predictions("TCS")
     assert len(df) > 0
-    
+
     try:
         from event_classifier import Event
+
         ev = Event(
             source="TEST",
             headline="TCS something",
             impact_score=1.0,
             confidence=1.0,
-            timestamp=pd.Timestamp("2026-01-01 10:05:00")
+            timestamp=pd.Timestamp("2026-01-01 10:05:00"),
         )
         hm.save_event(ev)
-        
+
         ex = hm.get_events(limit=10)
         assert len(ex) > 0
     except Exception:
         pass
-        
+
     try:
         perf = hm.get_performance_metrics()
         assert perf is not None
