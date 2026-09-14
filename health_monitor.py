@@ -177,7 +177,9 @@ if __name__ == "__main__":
     configure_logging(log_filename="health_monitor_selftest.log")
     logger.info("Running health_monitor.py self-test...")
 
-    test_db_path = tempfile.mktemp(suffix=".sqlite3")
+    fd, test_db_path = tempfile.mkstemp(suffix=".sqlite3")
+
+    os.close(fd)
     engine = create_engine(f"sqlite:///{test_db_path}")
 
     Base.metadata.create_all(bind=engine)
