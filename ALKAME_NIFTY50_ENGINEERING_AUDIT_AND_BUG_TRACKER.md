@@ -1,22 +1,22 @@
-# ALKAME NIFTY 50 — Engineering Audit, Bug Register, Upgrade Plan & AI-Agent Maintenance Tracker
+# ALKAME NIFTY 50 — Engineering Audit, Bug Register, Upgrade Plan & Maintenance Tracker
 
 > **Repository:** https://github.com/Alkameinc/alkame-nifty-50-educational  
 > **Audited branch:** `main`  
 > **Audit date:** 2026-09-12  
 > **Audit type:** Static repository/code review + current GitHub tree/source inspection  
-> **Primary purpose:** Give an AI coding agent a persistent, structured source of truth for fixing, validating, upgrading, and tracking this repository.
+> **Primary purpose:** Give developers a persistent, structured source of truth for fixing, validating, upgrading, and tracking this repository.
 >
 > **Important limitation:** This audit was performed against the publicly visible repository source. I could inspect the current source, tests, documentation, dependency declarations, architecture, and GitHub repository state, but I did not execute the project in a local clone. Therefore every item below is categorized as either **Observed**, **Strongly Suspected**, or **Needs Runtime Verification** where appropriate.
 
 ---
 
-# 1. Agent Operating Instructions
+# 1. Operating Instructions
 
 ## 1.1 Mission
 
-The agent's job is **not** to blindly add features.
+The developer's job is **not** to blindly add features.
 
-The agent must:
+The developer must:
 
 1. Restore correctness first.
 2. Prevent silent failures.
@@ -70,7 +70,7 @@ Severity:
 
 ## 1.4 Evidence rule
 
-Every new bug discovered by the agent must contain:
+Every new bug discovered by a developer must contain:
 
 ```text
 ID:
@@ -262,7 +262,7 @@ The data layer explicitly models:
 LIVE
 CACHED_FRESH
 CACHED_STALE
-UNAVAILABLE
+UNAVLABLE
 ```
 
 That is a strong design choice.
@@ -456,7 +456,7 @@ The dataset is then split chronologically.
 This creates an important boundary problem:
 
 ```text
-TRAIN ROW
+TRN ROW
     |
     |---- future horizon ----|
                  TEST PERIOD
@@ -548,7 +548,7 @@ potentially stronger trading output
 Introduce explicit state:
 
 ```text
-UNAVAILABLE
+UNAVLABLE
 ```
 
 or:
@@ -562,7 +562,7 @@ and require the predictor to decide whether this state suppresses or degrades th
 Prefer:
 
 ```text
-GLOBAL_RISK_UNAVAILABLE
+GLOBAL_RISK_UNAVLABLE
 ```
 
 rather than silently converting missing risk data into normal conditions.
@@ -572,7 +572,7 @@ rather than silently converting missing risk data into normal conditions.
 - zero global drivers never become `NORMAL`
 - risk-unavailable state is serialized in signal output
 - tests verify suppression/degradation
-- dashboard clearly distinguishes NORMAL from UNAVAILABLE
+- dashboard clearly distinguishes NORMAL from UNAVLABLE
 
 ---
 
@@ -1908,7 +1908,7 @@ and lock the tested environment.
 
 # 20. Security Hardening Checklist
 
-The agent must complete all of the following before public deployment:
+The developer must complete all of the following before public deployment:
 
 - [ ] authentication
 - [ ] authorization
@@ -2200,7 +2200,7 @@ All of the following must be true:
 
 ---
 
-# 27. Agent Validation Commands
+# 27. Validation Commands
 
 Minimum local validation:
 
@@ -2285,9 +2285,9 @@ bandit
 
 ---
 
-# 29. AI-Agent Progress Tracking Protocol
+# 29. Progress Tracking Protocol
 
-The agent must update this file after every meaningful fix.
+The developer must update this file after every meaningful fix.
 
 ## 29.1 Per-issue update
 
@@ -2321,7 +2321,7 @@ Remaining:
 Append to:
 
 ```markdown
-# 30. Agent Change Log
+# 30. Bug Fix Log
 ```
 
 Never rewrite the historical log.
@@ -2329,7 +2329,7 @@ Never rewrite the historical log.
 Format:
 
 ```markdown
-## 2026-09-12 — <agent>
+## 2026-09-12 — <developer_name>
 ### Fixed
 - ...
 
@@ -2434,7 +2434,7 @@ This repository explicitly states that it is educational/research software and p
 
 The repository also contains a strong warning about potential regulatory obligations before public signal distribution.
 
-The engineering agent must therefore:
+The engineering team must therefore:
 
 - not remove disclaimer text
 - not weaken license restrictions
@@ -2490,9 +2490,9 @@ Correctness
 
 ---
 
-# 35. Agent Start Here
+# 35. Start Here
 
-When an AI agent loads this file, its first action should be:
+When a developer loads this file, its first action should be:
 
 ```text
 1. Read repository HEAD.
@@ -2514,7 +2514,7 @@ The file is a **living engineering record**, not a frozen bug list.
 
 ---
 
-# 36. Agent Change Log
+# 36. Bug Fix Log
 
 ## 2026-09-12 — Initial external repository audit
 
@@ -2598,7 +2598,7 @@ All Phase 4A tasks resolved and verified via full regression suite:
 
 ---
 
-## 2026-09-14 — Antigravity Agent Fixes
+## 2026-09-14 — Recent Fixes
 
 ### Fixed
 - Formatted `predictor.py` and `scheduler.py` using `black` to conform with project style.
