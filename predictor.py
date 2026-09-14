@@ -507,12 +507,11 @@ class Predictor:
                     + "; ".join(f"[{e.source}/{e.scope}] {e.headline_or_label}" for e in contributing_events[:5])
                 )
             elif event_batch_result.status == "NO_EVENTS":
-                reasoning.append("Event sources were checked successfully; no eligible events are currently tagged as affecting this stock.")
-            elif event_batch_result.status == "EVENT_SOURCE_PARTIAL":
                 reasoning.append(
-                    "Event context is partially unavailable: "
-                    + "; ".join(event_batch_result.errors)
+                    "Event sources were checked successfully; no eligible events are currently tagged as affecting this stock."
                 )
+            elif event_batch_result.status == "EVENT_SOURCE_PARTIAL":
+                reasoning.append("Event context is partially unavailable: " + "; ".join(event_batch_result.errors))
             else:
                 reasoning.append("No specific events currently tagged as affecting this stock.")
             reasoning.extend(gate.reasons)

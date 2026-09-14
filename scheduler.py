@@ -59,6 +59,7 @@ class LiveWorthinessSnapshot:
     calibration_result: CalibrationResult
     refreshed_at: datetime
 
+
 @dataclass
 class EventContext:
     macro_events: list | None
@@ -73,6 +74,7 @@ class EventContext:
     as_of: datetime
     refreshed_at: datetime
     errors: list[str]
+
 
 @dataclass
 class CycleResult:
@@ -113,13 +115,9 @@ class Scheduler:
         self.history_manager = history_manager or HistoryManager()
         self.backtester = backtester or Backtester()
 
-        self.corporate_events_fetcher = (
-            corporate_events_fetcher or CorporateEventsFetcher()
-        )
+        self.corporate_events_fetcher = corporate_events_fetcher or CorporateEventsFetcher()
         self.macro_calendar = macro_calendar or MacroCalendar()
-        self.news_sentiment_fetcher = (
-            news_sentiment_fetcher or NewsSentimentFetcher()
-        )
+        self.news_sentiment_fetcher = news_sentiment_fetcher or NewsSentimentFetcher()
 
         self._live_worthiness_cache: dict[tuple[str, str], LiveWorthinessSnapshot] = {}
         self._event_context_cache: dict[str, EventContext] = {}
@@ -239,11 +237,7 @@ class Scheduler:
         if context.news_articles is not None:
             news_articles = []
             for article in context.news_articles:
-                available_at = (
-                    article.get("available_at")
-                    or article.get("published_at")
-                    or article.get("fetched_at")
-                )
+                available_at = article.get("available_at") or article.get("published_at") or article.get("fetched_at")
                 event_time = cls._coerce_event_datetime(available_at)
                 if event_time is not None and cls._as_utc(event_time) <= as_of_utc:
                     news_articles.append(article)
@@ -301,8 +295,7 @@ class Scheduler:
             cached is not None
             and as_of is None
             and not force_refresh
-            and datetime.now() - cached.refreshed_at
-            < timedelta(minutes=EVENT_CONTEXT_REFRESH_MINUTES)
+            and datetime.now() - cached.refreshed_at < timedelta(minutes=EVENT_CONTEXT_REFRESH_MINUTES)
         )
         if cache_fresh:
             return self._filter_events_as_of(cached, query_time)
