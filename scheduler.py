@@ -197,7 +197,7 @@ class Scheduler:
     @staticmethod
     def _coerce_event_datetime(value: object) -> datetime | None:
         if isinstance(value, pd.Timestamp):
-            return value.to_pydatetime()
+            return cast(datetime, value.to_pydatetime())
         if isinstance(value, datetime):
             return value
         if isinstance(value, str):
@@ -298,13 +298,13 @@ class Scheduler:
             and not force_refresh
             and datetime.now() - cached.refreshed_at < timedelta(minutes=EVENT_CONTEXT_REFRESH_MINUTES)
         )
-        if cache_fresh:
+        if cache_fresh and cached is not None:
             return self._filter_events_as_of(cached, query_time)
 
         errors: list[str] = []
 
         try:
-            macro_events = self.macro_calendar.get_active_macro_events(query_time.date())
+            macro_events: list | None = self.macro_calendar.get_active_macro_events(query_time.date())
             macro_ok = getattr(self.macro_calendar, "_last_query_ok", True)
             if macro_ok is False:
                 macro_events = None
@@ -318,7 +318,7 @@ class Scheduler:
             errors.append(f"Macro event source unavailable: {e}")
 
         try:
-            corporate_events = self.corporate_events_fetcher.fetch_all_for_symbol(symbol)
+            corporate_events: list[dict] | None = self.corporate_events_fetcher.fetch_all_for_symbol(symbol)
             corporate_status = getattr(self.corporate_events_fetcher, "_last_fetch_status", None)
             if corporate_status is None:
                 corporate_status = "EVENTS_AVAILABLE" if corporate_events else "NO_EVENTS"
@@ -331,7 +331,7 @@ class Scheduler:
             errors.append(f"Corporate event source unavailable: {e}")
 
         try:
-            news_articles = self.news_sentiment_fetcher.get_news_for_symbol(symbol)
+            news_articles: list[dict] | None = self.news_sentiment_fetcher.get_news_for_symbol(symbol)
             news_status = getattr(self.news_sentiment_fetcher, "_last_fetch_status", None)
             if news_status is None:
                 news_status = "EVENTS_AVAILABLE" if news_articles else "NO_EVENTS"
