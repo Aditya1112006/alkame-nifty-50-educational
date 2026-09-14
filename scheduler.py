@@ -2,7 +2,7 @@
 import logging
 import time as time_module
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Optional, cast
 from zoneinfo import ZoneInfo
 
@@ -20,12 +20,12 @@ from config import (
     SCHEDULER_INTERVAL_MINUTES,
     configure_logging,
 )
-from data_fetcher import DataFetcher
 from corporate_events_fetcher import CorporateEventsFetcher
-from macro_calendar import MacroCalendar
-from news_sentiment_fetcher import NewsSentimentFetcher
+from data_fetcher import DataFetcher
 from event_classifier import EventClassifier
 from history_manager import HistoryManager
+from macro_calendar import MacroCalendar
+from news_sentiment_fetcher import NewsSentimentFetcher
 from predictor import MultiHorizonSignal, PredictionSignal, Predictor
 from runtime_validator import CalibrationResult, EdgeCheckResult
 
@@ -211,7 +211,7 @@ class Scheduler:
     def _as_utc(value: datetime) -> datetime:
         if value.tzinfo is None:
             value = value.replace(tzinfo=ZoneInfo(MARKET_TIMEZONE))
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)
 
     @classmethod
     def _filter_events_as_of(cls, context: EventContext, as_of: datetime) -> EventContext:
@@ -250,6 +250,7 @@ class Scheduler:
             for status, events in zip(
                 statuses,
                 [macro_events, corporate_events, news_articles],
+                strict=False,
             )
         ]
 
