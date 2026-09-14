@@ -2598,6 +2598,32 @@ All Phase 4A tasks resolved and verified via full regression suite:
 
 ---
 
+## 2026-09-14 — Antigravity Agent Fixes
+
+### Fixed
+- Formatted `predictor.py` and `scheduler.py` using `black` to conform with project style.
+- Resolved Ruff lint errors in `scheduler.py` (I001, UP017, B905, F401).
+- Resolved Mypy type errors in `scheduler.py` (no-any-return, arg-type, assignment).
+- Resolved test coverage deficit that failed CI.
+
+### Added tests
+- Committed 22 missing test files from the `tests/` directory to Git (comprising over 1,135 lines of tests).
+- Increased test coverage from 50.22% to 60.76%, satisfying the >= 60% CI threshold.
+
+### Validation
+- `black --check predictor.py scheduler.py` passes.
+- `ruff check scheduler.py` passes.
+- `mypy scheduler.py` passes.
+- `python -m pytest . --cov --cov-report=term-missing` passes with >60% coverage.
+
+### Commit
+- `1097146` (Black formatting)
+- `44497ad` (Ruff fixes)
+- `021214f` (Mypy fixes)
+- `e9a4a71` (Test coverage fix)
+
+---
+
 # 37. Current Status Snapshot
 
 ```text
