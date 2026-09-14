@@ -1,4 +1,3 @@
-
 import pytest
 
 from human_insight_manager import HumanInsightManager
