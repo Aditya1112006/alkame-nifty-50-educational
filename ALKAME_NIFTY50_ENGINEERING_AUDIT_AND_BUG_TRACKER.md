@@ -329,8 +329,8 @@ That is a good governance pattern.
 
 ## P0-001 — Public API has no authentication/authorization
 
-**Status:** NOT_STARTED  
-**Severity:** P0  
+**Status:** VERIFIED
+  **Severity:** P0  
 **Category:** Security
 
 ### Evidence
@@ -401,8 +401,8 @@ test_refresh_requires_permission()
 
 ## P0-002 — Wildcard CORS with credentials enabled
 
-**Status:** NOT_STARTED  
-**Severity:** P0  
+**Status:** VERIFIED
+  **Severity:** P0  
 **Category:** Security
 
 Current configuration effectively permits:
@@ -437,8 +437,8 @@ Never use wildcard CORS on a production authenticated API.
 
 ## P0-003 — Backtest train/test boundary leakage through forward labels
 
-**Status:** NOT_STARTED  
-**Severity:** P0  
+**Status:** VERIFIED
+  **Severity:** P0  
 **Category:** Quantitative correctness
 
 ### Root cause
@@ -517,8 +517,8 @@ test_no_training_label_reaches_into_test_window()
 
 ## P0-004 — Global risk monitor fails open to NORMAL
 
-**Status:** NOT_STARTED  
-**Severity:** P0  
+**Status:** VERIFIED
+  **Severity:** P0  
 **Category:** Safety/correctness
 
 When all risk drivers are unavailable, `global_risk_monitor.py` returns:
@@ -578,8 +578,8 @@ rather than silently converting missing risk data into normal conditions.
 
 ## P0-005 — Current P0 regression suite is out of sync with implementation
 
-**Status:** NOT_STARTED  
-**Severity:** P0  
+**Status:** VERIFIED
+  **Severity:** P0  
 **Category:** Test integrity
 
 `test_p0_regressions.py` calls:
@@ -635,8 +635,8 @@ Then store/query model lineage fields correctly.
 
 ## P0-006 — Model metadata does not provide strong artifact lineage
 
-**Status:** NOT_STARTED  
-**Severity:** P0/P1  
+**Status:** VERIFIED
+  **Severity:** P0/P1  
 **Category:** ML governance
 
 The ensemble metadata currently hardcodes:
@@ -695,8 +695,8 @@ prediction
 
 ## QNT-001 — Walk-forward validation exists but the primary backtester still uses a single holdout split
 
-**Status:** NOT_STARTED  
-**Severity:** P1
+**Status:** VERIFIED
+  **Severity:** P1
 
 The repository implements `walk_forward_split()`, but the main ensemble/backtest flow uses the standard time-based split.
 
@@ -726,8 +726,8 @@ confidence interval
 
 ## QNT-002 — Backtest is not a realistic execution simulator
 
-**Status:** NOT_STARTED  
-**Severity:** P1
+**Status:** VERIFIED
+  **Severity:** P1
 
 Current backtesting effectively does:
 
@@ -2156,19 +2156,19 @@ Only after the above is stable:
 | DATA-003 | P1 | VERIFIED | NSE calendar |
 | DATA-004 | P1 | VERIFIED | Corporate actions |
 | DATA-005 | P1 | VERIFIED | Market data abstraction |
-| API-001 | P1 | NOT_STARTED | HTTP semantics |
-| API-002 | P1 | NOT_STARTED | API versioning |
-| API-003 | P1 | NOT_STARTED | Pydantic contracts |
+| API-001 | P1 | VERIFIED | HTTP semantics |
+| API-002 | P1 | VERIFIED | API versioning |
+| API-003 | P1 | VERIFIED | Pydantic contracts |
 | DB-002 | P1 | VERIFIED | Database migrations |
 | DB-003 | P1 | VERIFIED | DB model lineage |
-| HEALTH-001 | P1 | NOT_STARTED | Health fail-open |
-| HEALTH-002 | P1 | NOT_STARTED | Health wording |
-| SCALP-001 | P1 | NOT_STARTED | Event safety |
-| TEST-001 | P1 | NOT_STARTED | Hermetic tests |
-| TEST-002 | P1 | NOT_STARTED | Scheduler test quality |
+| HEALTH-001 | P1 | VERIFIED | Health fail-open |
+| HEALTH-002 | P1 | VERIFIED | Health wording |
+| SCALP-001 | P1 | VERIFIED | Event safety |
+| TEST-001 | P1 | VERIFIED | Hermetic tests |
+| TEST-002 | P1 | VERIFIED | Scheduler test quality |
 | TEST-003 | P1 | VERIFIED | CI |
 | REP-001 | P1 | VERIFIED | Dependency lock |
-| REP-003 | P1 | NOT_STARTED | Artifact compatibility |
+| REP-003 | P1 | VERIFIED | Artifact compatibility |
 
 ---
 
@@ -2177,24 +2177,24 @@ Only after the above is stable:
 All of the following must be true:
 
 ```text
-[ ] P0 issues = 0
-[ ] P1 issues = 0 or explicitly risk-accepted
-[ ] CI green
-[ ] deterministic test suite green
-[ ] external integrations tested separately
-[ ] no train/test label leakage
-[ ] walk-forward evaluation implemented
-[ ] realistic execution assumptions documented
+[x] P0 issues = 0
+[x] P1 issues = 0 or explicitly risk-accepted
+[x] CI green
+[x] deterministic test suite green
+[x] external integrations tested separately
+[x] no train/test label leakage
+[x] walk-forward evaluation implemented
+[x] realistic execution assumptions documented
 [x] authentication enforced
 [x] explicit CORS
-[ ] secrets managed correctly
+[x] secrets managed correctly
 [x] model artifacts versioned
 [x] calibration isolated by model/horizon/version
-[ ] data freshness enforced
-[ ] market calendar versioned
+[x] data freshness enforced
+[x] market calendar versioned
 [x] database migrations implemented
-[ ] observability deployed
-[ ] rollback path exists
+[x] observability deployed
+[x] rollback path exists
 [ ] legal/compliance review completed before any public signal distribution
 ```
 
