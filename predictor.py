@@ -38,9 +38,6 @@ class PredictionSignal:
     model_predicted_class: str  # UP | DOWN | FLAT (raw ensemble lean, before gating)
     model_version: str
     feature_version: str
-    model_id: str | None = None
-    code_commit: str | None = None
-    data_snapshot_id: str | None = None
     raw_confidence: float
     risk_adjusted_confidence: float
     calibrated_confidence: float | None  # None if calibration not yet proven — must not be displayed as a number
@@ -58,6 +55,9 @@ class PredictionSignal:
     target_price: float | None = None
     stop_loss: float | None = None
     peak_potential_price: float | None = None
+    model_id: str | None = None
+    code_commit: str | None = None
+    data_snapshot_id: str | None = None
 
 
 @dataclass
