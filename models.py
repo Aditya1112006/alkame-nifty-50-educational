@@ -113,4 +113,3 @@ class AuditLog(Base):
     status = Column(String)  # SUCCESS | FAILED | REJECTED
     details = Column(String)
     ip_address = Column(String)
-

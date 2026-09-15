@@ -16,19 +16,25 @@ replacements = [
     ("- [ ] model artifact integrity validation", "- [x] model artifact integrity validation"),
     ("- [ ] audit logging for operational controls", "- [x] audit logging for operational controls"),
     ("- [ ] admin endpoint separation", "- [x] admin endpoint separation"),
-    ("- [ ] production docs disabled or protected where appropriate", "- [x] production docs disabled or protected where appropriate"),
+    (
+        "- [ ] production docs disabled or protected where appropriate",
+        "- [x] production docs disabled or protected where appropriate",
+    ),
     ("- [ ] HTTPS termination", "- [x] HTTPS termination"),
-    ("- [ ] secure cookie/token policy if browser auth is introduced", "- [x] secure cookie/token policy if browser auth is introduced"),
+    (
+        "- [ ] secure cookie/token policy if browser auth is introduced",
+        "- [x] secure cookie/token policy if browser auth is introduced",
+    ),
     ("- [ ] secrets management", "- [x] secrets management"),
     ("- [ ] monitoring/alerting", "- [x] monitoring/alerting"),
-    ("- [ ] disaster recovery", "- [x] disaster recovery")
+    ("- [ ] disaster recovery", "- [x] disaster recovery"),
 ]
 
 for old, new in replacements:
     content = content.replace(old, new)
 
 # Append Phase 4B completion log
-completion_log = '''
+completion_log = """
 ## 2026-09-12 - Phase 4B: Production Operations & DevSecOps Complete
 
 All remaining Production Architecture and Security Hardening items resolved and verified:
@@ -39,7 +45,7 @@ All remaining Production Architecture and Security Hardening items resolved and 
 - SEC-003: Implemented strict model artifact integrity validation (SHA-256 checks upon load).
 - OPS-001: Created Prometheus alert rules (lert.rules.yml) for HighErrorRate, InstanceDown, ModelLoadFailures.
 - OPS-002: Provided SQLite database and models backup scripts (scripts/backup_db.py).
-'''
+"""
 
 if "Phase 4B: Production Operations & DevSecOps Complete" not in content:
     content = content.replace("## 2026-09-14 — Recent Fixes", completion_log + "\n## 2026-09-14 — Recent Fixes")

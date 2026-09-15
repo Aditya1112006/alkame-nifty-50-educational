@@ -1,74 +1,100 @@
-﻿import sys
-import re
+"""
+patch_api.py - Restore api.py from the last clean git commit, then apply
+three targeted fixes:
+  1. Fix CSP header so Swagger /docs works (allow jsdelivr.net CDN)
+  2. Add /healthz endpoint
+  3. Remove duplicate return StreamingResponse(...) line outside a function
+Run with: python patch_api.py
+"""
 
-file_path = "api.py"
-with open(file_path, "r", encoding="utf-8") as f:
-    content = f.read()
+import subprocess
+import py_compile
+import sys
 
-# Add imports if missing
-if "from database import SessionLocal" not in content:
-    content = content.replace("from fastapi.responses import", "from database import SessionLocal\nfrom models import AuditLog\nfrom fastapi.responses import")
+# 1. Restore clean version from HEAD
+result = subprocess.run(
+    ["git", "show", "HEAD:api.py"],
+    capture_output=True,
+    text=True,
+    encoding="utf-8",
+)
+if result.returncode != 0:
+    raise RuntimeError("git show failed: " + result.stderr)
 
-if "from datetime import datetime, timezone" not in content:
-    content = content.replace("import logging", "import logging\nfrom datetime import datetime, timezone")
+src = result.stdout
+print("Restored api.py from HEAD: " + str(src.count("\n")) + " lines")
 
-# Add middleware for security headers
-middleware_code = '''
-@app.middleware("http")
-async def security_headers_middleware(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none';"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    return response
+# 2. Fix CSP to allow Swagger UI CDN scripts
+old_csp = "response.headers[\"Content-Security-Policy\"] = \"default-src 'self'; frame-ancestors 'none';\""
+new_csp = (
+    'response.headers["Content-Security-Policy"] = (\n'
+    "        \"default-src 'self'; \"\n"
+    "        \"script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; \"\n"
+    "        \"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; \"\n"
+    "        \"img-src 'self' data: https://fastapi.tiangolo.com; \"\n"
+    "        \"frame-ancestors 'none';\"\n"
+    "    )"
+)
+if old_csp in src:
+    src = src.replace(old_csp, new_csp)
+    print("OK: CSP fixed")
+else:
+    print("WARN: CSP line not found - check manually")
 
-def log_audit_event(client: ClientAuth, action: str, resource: str, status: str, details: str, request: Request):
-    ip_address = request.client.host if request and request.client else "unknown"
-    key_prefix = client.key[:6] if client.key else "none"
-    try:
-        with SessionLocal() as db:
-            audit = AuditLog(
-                timestamp=datetime.now(timezone.utc).isoformat(),
-                client_key_prefix=key_prefix,
-                client_role=client.role,
-                action=action,
-                resource=resource,
-                status=status,
-                details=details,
-                ip_address=ip_address
-            )
-            db.add(audit)
-            db.commit()
-    except Exception as e:
-        logger.error(f"Failed to record audit log: {e}")
-'''
-if "security_headers_middleware" not in content:
-    content = content.replace("app.add_middleware(", f"{middleware_code}\napp.add_middleware(")
+# 3. Add /healthz endpoint after get_health (before /api/v1/symbols)
+healthz_block = (
+    "\n\n"
+    '@app.get("/healthz", tags=["Health"], response_model=HealthResponse)\n'
+    "def healthz():\n"
+    '    """Kubernetes-style liveness probe - alias for /api/v1/health."""\n'
+    "    return get_health()\n"
+)
+symbols_marker = '@app.get("/api/v1/symbols"'
+if symbols_marker in src and "def healthz" not in src:
+    src = src.replace(symbols_marker, healthz_block + symbols_marker, 1)
+    print("OK: /healthz endpoint added")
+elif "def healthz" in src:
+    print("OK: /healthz already present - skipped")
+else:
+    print("WARN: Could not find symbols marker to insert /healthz")
 
-# Update set_risk_toggle to include request and log_audit_event
-if "request: Request," not in content.split("def set_risk_toggle(")[1].split(")")[0]:
-    content = content.replace(
-        "def set_risk_toggle(enabled: bool, client: ClientAuth = Depends(require_role(\"ADMIN\"))):",
-        "def set_risk_toggle(enabled: bool, request: Request, client: ClientAuth = Depends(require_role(\"ADMIN\"))):"
+# 4. Remove duplicate return StreamingResponse outside a function
+dup = (
+    '    return StreamingResponse(generate(), media_type="text/event-stream")\n'
+    "\n"
+    '    return StreamingResponse(generate(), media_type="text/event-stream")'
+)
+single = '    return StreamingResponse(generate(), media_type="text/event-stream")'
+if dup in src:
+    src = src.replace(dup, single)
+    print("OK: Duplicate StreamingResponse return removed")
+else:
+    print("INFO: No duplicate StreamingResponse found (may already be clean)")
+
+# 5. Add root endpoint if missing
+root_route = '@app.get("/", tags=["Root"])'
+if root_route not in src:
+    root_block = (
+        "\n\n"
+        '@app.get("/", tags=["Root"])\n'
+        "def read_root():\n"
+        '    """Welcome endpoint."""\n'
+        '    return {"message": "Welcome to Nifty50 API. Visit /docs for Swagger UI."}\n'
     )
-    content = content.replace(
-        "return {\"status\": \"success\", \"enabled\": state.enabled}",
-        "log_audit_event(client, 'TOGGLE_RISK', 'global_risk', 'SUCCESS', f'Set enabled={enabled}', request)\n    return {\"status\": \"success\", \"enabled\": state.enabled}"
-    )
+    src = src.rstrip() + root_block
+    print("OK: Root / endpoint added")
+else:
+    print("OK: Root / endpoint already present - skipped")
 
-# Update refresh_backtest similarly
-if "def refresh_backtest(symbol: str, response: Response = Response(), client: ClientAuth = Depends(get_current_client)):" in content:
-    content = content.replace(
-        "def refresh_backtest(symbol: str, response: Response = Response(), client: ClientAuth = Depends(get_current_client)):",
-        "def refresh_backtest(symbol: str, request: Request, response: Response = Response(), client: ClientAuth = Depends(get_current_client)):"
-    )
-    content = content.replace(
-        "return {\"status\": \"success\", \"symbol\": symbol, \"refreshed\": refreshed}",
-        "log_audit_event(client, 'REFRESH', f'symbol={symbol}', 'SUCCESS', f'Refreshed {refreshed} horizons', request)\n        return {\"status\": \"success\", \"symbol\": symbol, \"refreshed\": refreshed}"
-    )
+# 6. Write patched file
+with open("api.py", "w", encoding="utf-8", newline="\n") as f:
+    f.write(src)
+print("Patched api.py written: " + str(src.count("\n")) + " lines")
 
-with open(file_path, "w", encoding="utf-8") as f:
-    f.write(content)
+# 7. Syntax check
+try:
+    py_compile.compile("api.py", doraise=True)
+    print("Syntax check PASSED")
+except py_compile.PyCompileError as e:
+    print("Syntax check FAILED: " + str(e))
+    sys.exit(1)
