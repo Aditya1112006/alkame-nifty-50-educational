@@ -99,3 +99,18 @@ class ModelRegistry(Base):
     features_hash = Column(String)
     artifact_path = Column(String)
     is_active = Column(Boolean)
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(String, nullable=False)
+    client_key_prefix = Column(String)
+    client_role = Column(String)
+    action = Column(String, nullable=False)
+    resource = Column(String)
+    status = Column(String)  # SUCCESS | FAILED | REJECTED
+    details = Column(String)
+    ip_address = Column(String)
+

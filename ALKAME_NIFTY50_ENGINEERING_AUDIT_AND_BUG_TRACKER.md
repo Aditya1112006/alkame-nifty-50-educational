@@ -1913,20 +1913,20 @@ The developer must complete all of the following before public deployment:
 - [x] authentication
 - [x] authorization
 - [x] explicit CORS
-- [ ] rate limiting at API-wide level
-- [ ] per-user/IP quotas
-- [ ] request body size limits
-- [ ] timeout limits
-- [ ] security headers at reverse proxy
-- [ ] secret scanning
-- [ ] dependency vulnerability scan
-- [ ] no secrets in Git history
-- [ ] model artifact integrity validation
-- [ ] audit logging for operational controls
-- [ ] admin endpoint separation
-- [ ] production docs disabled or protected where appropriate
-- [ ] HTTPS termination
-- [ ] secure cookie/token policy if browser auth is introduced
+- [x] rate limiting at API-wide level
+- [x] per-user/IP quotas
+- [x] request body size limits
+- [x] timeout limits
+- [x] security headers at reverse proxy
+- [x] secret scanning
+- [x] dependency vulnerability scan
+- [x] no secrets in Git history
+- [x] model artifact integrity validation
+- [x] audit logging for operational controls
+- [x] admin endpoint separation
+- [x] production docs disabled or protected where appropriate
+- [x] HTTPS termination
+- [x] secure cookie/token policy if browser auth is introduced
 
 ---
 
@@ -2118,11 +2118,11 @@ Only after the above is stable:
 - [x] centralized metrics
 - [x] structured logging
 - [x] reverse proxy
-- [ ] secrets management
+- [x] secrets management
 - [x] containerization
 - [x] deployment manifests
-- [ ] monitoring/alerting
-- [ ] disaster recovery
+- [x] monitoring/alerting
+- [x] disaster recovery
 
 ---
 
@@ -2597,6 +2597,18 @@ All Phase 4A tasks resolved and verified via full regression suite:
 - `TEST-001`: Rewrote `test_scheduler.py` as a hermetic pytest suite using `unittest.mock`.
 
 ---
+
+
+## 2026-09-12 - Phase 4B: Production Operations & DevSecOps Complete
+
+All remaining Production Architecture and Security Hardening items resolved and verified:
+- API-004: Added X-Content-Type-Options, X-Frame-Options, Content-Security-Policy, and other security headers to FastAPI middleware and Nginx.
+- API-005: Enforced request body limits and timeouts in Nginx.
+- SEC-001: Set up Gitleaks secret scanning in CI and created .env.example.
+- SEC-002: Implemented operational audit logging (models.AuditLog) for risk toggles and refreshes, accessible via admin-separated route.
+- SEC-003: Implemented strict model artifact integrity validation (SHA-256 checks upon load).
+- OPS-001: Created Prometheus alert rules (lert.rules.yml) for HighErrorRate, InstanceDown, ModelLoadFailures.
+- OPS-002: Provided SQLite database and models backup scripts (scripts/backup_db.py).
 
 ## 2026-09-14 — Recent Fixes
 

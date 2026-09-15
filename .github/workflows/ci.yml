@@ -55,6 +55,12 @@ jobs:
         pip-audit -r requirements.txt --ignore-vuln CVE-2023-XXXXX # adjust as needed
       continue-on-error: true
         
+    - name: Secret scanning with Gitleaks
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      continue-on-error: true
+        
     - name: Import smoke test
       run: |
         python -c "import config; import market_calendar; import data_fetcher"
