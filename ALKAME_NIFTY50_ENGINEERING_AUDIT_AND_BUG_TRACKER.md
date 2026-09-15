@@ -1910,9 +1910,9 @@ and lock the tested environment.
 
 The developer must complete all of the following before public deployment:
 
-- [ ] authentication
-- [ ] authorization
-- [ ] explicit CORS
+- [x] authentication
+- [x] authorization
+- [x] explicit CORS
 - [ ] rate limiting at API-wide level
 - [ ] per-user/IP quotas
 - [ ] request body size limits
@@ -2112,15 +2112,15 @@ Goal: make the codebase trustworthy enough to work on.
 
 Only after the above is stable:
 
-- [ ] PostgreSQL option
-- [ ] model registry
-- [ ] artifact versioning
-- [ ] centralized metrics
-- [ ] structured logging
-- [ ] reverse proxy
+- [x] PostgreSQL option
+- [x] model registry
+- [x] artifact versioning
+- [x] centralized metrics
+- [x] structured logging
+- [x] reverse proxy
 - [ ] secrets management
-- [ ] containerization
-- [ ] deployment manifests
+- [x] containerization
+- [x] deployment manifests
 - [ ] monitoring/alerting
 - [ ] disaster recovery
 
@@ -2185,14 +2185,14 @@ All of the following must be true:
 [ ] no train/test label leakage
 [ ] walk-forward evaluation implemented
 [ ] realistic execution assumptions documented
-[ ] authentication enforced
-[ ] explicit CORS
+[x] authentication enforced
+[x] explicit CORS
 [ ] secrets managed correctly
-[ ] model artifacts versioned
-[ ] calibration isolated by model/horizon/version
+[x] model artifacts versioned
+[x] calibration isolated by model/horizon/version
 [ ] data freshness enforced
 [ ] market calendar versioned
-[ ] database migrations implemented
+[x] database migrations implemented
 [ ] observability deployed
 [ ] rollback path exists
 [ ] legal/compliance review completed before any public signal distribution
