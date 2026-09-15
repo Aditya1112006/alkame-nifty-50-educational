@@ -329,6 +329,51 @@ Print this checklist and tick off each item:
 
 ---
 
+## Part 2: Verifying the React Frontend
+
+Now that the backend is running perfectly on port 8000, we need to verify the new React frontend matches the updated API contract.
+
+### 1. Start the Frontend Server
+
+Open a **new terminal window** (keep the backend running in the first one) and navigate to the frontend directory:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+**Expected output:**
+```
+  VITE v6.0.3  ready in xxx ms
+
+  ➜  Local:   http://localhost:3000/
+```
+
+### 2. Verify `.env.local` Configuration
+
+If the frontend fails to load data, ensure your API key is correctly set so the proxy can authenticate. 
+Create or check `frontend/.env.local`:
+
+```
+VITE_API_KEY=dev-alkame-admin-key
+```
+*(If you make changes to this file, you must restart the Vite server by pressing `Ctrl+C` and running `npm run dev` again).*
+
+### 3. Frontend UI Checklist
+
+Open `http://localhost:3000/` in your browser and verify the following components:
+
+- [ ] **Dynamic Symbol Dropdown:** Clicking the "Select Stock" dropdown should show all 50 symbols fetched from the API.
+- [ ] **Health Badge:** The top right corner should show a green badge saying "System Status: OK". Clicking it expands a diagnostic table.
+- [ ] **Risk Banner:** If the backend `global_risk` toggle is manually enabled, a sticky red warning banner should appear at the top of the page.
+- [ ] **Horizon Tabs:** You should see tabs for `INTRADAY`, `3D`, `7D`, `30D`, etc. Clicking them switches the active signal data without a page reload.
+- [ ] **Mini Chart:** A responsive line chart should render below the price information, correctly plotting the last 100 price candles.
+- [ ] **Scalping Panel:** If the `INTRADAY` tab is selected, a table titled "Intraday Scalping Opportunities" should appear at the bottom.
+- [ ] **Narrative Summary:** An expandable "Overall Narrative" section should appear below the chart, providing human-readable AI analysis.
+
+---
+
 ## Setting Up GPG-Verified Signatures for Commits
 
 GitHub branch protection rules for this repository require all commits to be signed. Follow these steps to set up GPG signing:
@@ -340,9 +385,9 @@ GitHub branch protection rules for this repository require all commits to be sig
 
 ### 2. Generate a GPG Key
 Open your terminal and run:
-`powershell
+```powershell
 gpg --full-generate-key
-`
+```
 - Select **RSA and RSA** (default).
 - Choose key size **4096**.
 - Enter validity period (e.g., `1y` or `0` for no expiration).
@@ -358,10 +403,10 @@ gpg --full-generate-key
 
 ### 4. Configure Git to Use the Key
 Run these commands in your terminal:
-`powershell
+```powershell
 git config --global user.signingkey <YOUR_KEY_ID>
 git config --global commit.gpgsign true
-`
+```
 Now, every time you run `git commit`, Git will automatically sign it using your GPG key.
 
 ## Who to Contact
@@ -369,10 +414,11 @@ Now, every time you run `git commit`, Git will automatically sign it using your 
 | Issue | Contact |
 |-------|---------|
 | API not starting / test failures | Tech lead or senior dev |
+| Frontend compilation errors | UI/UX team or senior dev |
 | Git access / repo permissions | Alkame engineering team |
 | API key for dev environment | Your onboarding manager |
 
 ---
 
-*Document last updated: 15 September 2026 | Commit: `9897c4f`*
+*Document last updated: 15 September 2026 | Commit: `HEAD`*
 
