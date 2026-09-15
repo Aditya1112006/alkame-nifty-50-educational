@@ -179,6 +179,7 @@ scalping_engine = ScalpingEngine(
     scheduler=scheduler,
 )
 
+
 def translate_health_message(component: str, status: str) -> str:
     if status == "OK":
         messages = {

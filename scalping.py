@@ -31,12 +31,12 @@ class ScalpingEngine:
     """
 
     def __init__(
-            self,
-            predictor: Predictor,
-            data_fetcher: DataFetcher,
-            feature_engineer: FeatureEngineer,
-            scheduler=None,
-        ):
+        self,
+        predictor: Predictor,
+        data_fetcher: DataFetcher,
+        feature_engineer: FeatureEngineer,
+        scheduler=None,
+    ):
         self.predictor = predictor
         self.data_fetcher = data_fetcher
         self.feature_engineer = feature_engineer

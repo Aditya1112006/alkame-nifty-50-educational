@@ -101,7 +101,10 @@ def test_scalping_injects_live_worthiness_evidence():
     # are intentionally bypassed in this focused wiring test.
     engine.scheduler = scheduler
 
-    assert engine.scheduler.get_cached_live_worthiness(
-        "RELIANCE",
-        horizon=HORIZON_INTRADAY,
-    ) is not None
+    assert (
+        engine.scheduler.get_cached_live_worthiness(
+            "RELIANCE",
+            horizon=HORIZON_INTRADAY,
+        )
+        is not None
+    )
