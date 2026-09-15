@@ -325,6 +325,45 @@ Print this checklist and tick off each item:
 
 ---
 
+
+
+---
+
+## Setting Up GPG-Verified Signatures for Commits
+
+GitHub branch protection rules for this repository require all commits to be signed. Follow these steps to set up GPG signing:
+
+### 1. Install GPG
+- **Windows:** Download and install [Gpg4win](https://gpg4win.org/).
+- **macOS:** Run `brew install gnupg`.
+- **Linux (Ubuntu):** Run `sudo apt-get install gnupg`.
+
+### 2. Generate a GPG Key
+Open your terminal and run:
+`powershell
+gpg --full-generate-key
+`
+- Select **RSA and RSA** (default).
+- Choose key size **4096**.
+- Enter validity period (e.g., `1y` or `0` for no expiration).
+- Enter your Name and the **exact email address** associated with your GitHub account.
+- Set a secure passphrase.
+
+### 3. Add the Key to GitHub
+1. Find your key ID: `gpg --list-secret-keys --keyid-format=long`
+   *(Look for the string after `rsa4096/`, e.g., `3AA5C34371567BD2`)*
+2. Export the public key: `gpg --armor --export <YOUR_KEY_ID>`
+3. Copy the output block (including `-----BEGIN PGP PUBLIC KEY BLOCK-----` to the end).
+4. Go to **GitHub Settings** -> **SSH and GPG keys** -> **New GPG key**, and paste the block.
+
+### 4. Configure Git to Use the Key
+Run these commands in your terminal:
+`powershell
+git config --global user.signingkey <YOUR_KEY_ID>
+git config --global commit.gpgsign true
+`
+Now, every time you run `git commit`, Git will automatically sign it using your GPG key.
+
 ## Who to Contact
 
 | Issue | Contact |
@@ -336,3 +375,4 @@ Print this checklist and tick off each item:
 ---
 
 *Document last updated: 15 September 2026 | Commit: `9897c4f`*
+
