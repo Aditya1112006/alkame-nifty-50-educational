@@ -1,8 +1,8 @@
 import pandas as pd
 
-from config import ALL_HORIZONS, HORIZON_INTRADAY
-from scanner import OpportunityScanner
+from config import HORIZON_INTRADAY
 from scalping import ScalpingEngine
+from scanner import OpportunityScanner
 
 
 class Snapshot:
