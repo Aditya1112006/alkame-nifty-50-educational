@@ -2159,8 +2159,8 @@ Only after the above is stable:
 | API-001 | P1 | NOT_STARTED | HTTP semantics |
 | API-002 | P1 | NOT_STARTED | API versioning |
 | API-003 | P1 | NOT_STARTED | Pydantic contracts |
-| DB-002 | P1 | NOT_STARTED | Database migrations |
-| DB-003 | P1 | NOT_STARTED | DB model lineage |
+| DB-002 | P1 | VERIFIED | Database migrations |
+| DB-003 | P1 | VERIFIED | DB model lineage |
 | HEALTH-001 | P1 | NOT_STARTED | Health fail-open |
 | HEALTH-002 | P1 | NOT_STARTED | Health wording |
 | SCALP-001 | P1 | NOT_STARTED | Event safety |
@@ -2621,6 +2621,20 @@ All Phase 4A tasks resolved and verified via full regression suite:
 - `44497ad` (Ruff fixes)
 - `021214f` (Mypy fixes)
 - `e9a4a71` (Test coverage fix)
+
+---
+
+## 2026-09-15 - Developer Engineering Fixes
+
+### Fixed
+- **DB-002**: Database migrations are now fully managed by Alembic. Fixed env.py metadata loading to properly detect schema changes and avoid dropping tables.
+- **DB-003**: Added model/version lineage columns (model_id, code_commit, data_snapshot_id) as first-class database fields in the predictions table, and wired them through PredictionSignal and history_manager.py.
+
+### Validation
+- Generated and applied Alembic autogenerate migration Add lineage fields to predictions.
+- lembic upgrade head successfully alters the SQLite schema.
+
+
 
 ---
 

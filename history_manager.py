@@ -30,6 +30,9 @@ class PredictionRecord:
     horizon: str
     model_version: str
     feature_version: str
+    model_id: str | None
+    code_commit: str | None
+    data_snapshot_id: str | None
     narrative: str
     dca_ladder: str
     timestamp: str
@@ -116,6 +119,9 @@ class HistoryManager:
                     dca_ladder=dca_ladder_str,
                     model_version=signal.model_version,
                     feature_version=signal.feature_version,
+                    model_id=signal.model_id,
+                    code_commit=signal.code_commit,
+                    data_snapshot_id=signal.data_snapshot_id,
                     is_out_of_sample=is_out_of_sample,
                 )
                 db.add(prediction)

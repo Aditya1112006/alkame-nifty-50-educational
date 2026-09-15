@@ -33,6 +33,9 @@ class Prediction(Base):
     dca_ladder = Column(String)
     model_version = Column(String, default="UNKNOWN")
     feature_version = Column(String, default="UNKNOWN")
+    model_id = Column(String)
+    code_commit = Column(String)
+    data_snapshot_id = Column(String)
     is_out_of_sample = Column(Boolean, default=False)
 
 
